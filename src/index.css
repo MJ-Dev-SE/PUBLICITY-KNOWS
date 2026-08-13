@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Budget Watch PH — public-utility design system (see CLAUDE.md §4).
+   Clean, flat, white surfaces, slate text. Two font weights only (400 / 500).
+   No gradients, no heavy shadows, sentence case everywhere. */
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #f8fafc; /* slate-50 */
+  color: #1e293b; /* slate-800 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
