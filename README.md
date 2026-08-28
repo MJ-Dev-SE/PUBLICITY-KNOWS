@@ -8,8 +8,6 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Leaflet](https://img.shields.io/badge/Leaflet-map-199900?logo=leaflet&logoColor=white)
 
-**[Live demo](https://publicity-knows.vercel.app)**
-
 **[▶ Live demo](https://publicity-knows.vercel.app)**
 
 ---
