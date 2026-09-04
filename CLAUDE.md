@@ -21,13 +21,25 @@ There is no test runner configured. `npm run build` is the gate for type errors 
 
 ## Environment
 
-The AI features need a Groq API key in `.env` (gitignored):
+The AI features need a Groq API key in `.env` (gitignored). See [.env.example](.env.example):
 
 ```
-VITE_GROQ_API_KEY=gsk_...
+GROQ_API_KEY=gsk_...
 ```
 
-Get one free at https://console.groq.com/keys. `isKeyConfigured()` checks for a key starting with `gsk_`; without it the chat/analysis UI renders a "not configured" state instead of failing. Restart the dev server after changing `.env`.
+**The missing `VITE_` prefix is deliberate — keep it that way.** Vite inlines every `VITE_*` variable into the client bundle at build time, so the previous `VITE_GROQ_API_KEY` shipped the key in plain text to every visitor: readable in the JS bundle, and visible in the Network tab because the browser called `api.groq.com` directly with it. The key is now read only by [api/analyze.ts](api/analyze.ts) and never reaches the browser. Never give a secret a `VITE_` prefix.
+
+Get a key free at https://console.groq.com/keys. On Vercel: Project → Settings → Environment Variables → add `GROQ_API_KEY`, then redeploy.
+
+Locally, `npm run dev` (plain Vite) does **not** serve `/api`, so the enabled-check fails and the AI UI simply stays hidden while the rest of the app works. Use `vercel dev` to develop the AI features.
+
+### AI request path ([api/analyze.ts](api/analyze.ts))
+
+`GET /api/analyze` → `{ enabled }`, which is how the client decides whether to render any AI UI at all (see `useAiEnabled`). `POST /api/analyze` runs one analysis or chat turn.
+
+Two rules the endpoint exists to enforce:
+- **The server owns the system prompt.** The client sends only `{mode, projectId, messages, lang}` — never prompt text. Prompts are rebuilt here from the same seed data via `buildContext`. Accepting a client-supplied prompt would turn this into a free general-purpose LLM running on your quota.
+- **Requests are capped and rate limited** (12 per IP per 10 min, ≤12 history turns, ≤2000 chars each). The limiter is an in-memory `Map`, so it is per-instance and best-effort — it stops casual hammering, not a determined attacker. Move it to Vercel KV / Upstash if this ever takes real traffic.
 
 ## Architecture
 
@@ -58,9 +70,10 @@ Fixed overlays sit on an explicit z-index ladder above Leaflet's panes: detail d
 - `SelectionContext` holds the single "what detail is open" selection (`{type, id} | null`) and exposes `openProject` / `openEntity` / `close`. Any card anywhere can open a detail drawer through it.
 - [urlState.ts](src/lib/urlState.ts) mirrors `{tab, selection}` into the URL query string (`?tab=&project=&entity=`) so views are deep-linkable and shareable. `App.tsx` wires `readUrl`/`writeUrl` + a `popstate` listener. Stale or unknown ids in a URL are ignored, so a shared link never opens a missing item. Note `writeUrl` uses `history.replaceState`, so in-app navigation does **not** push history entries — the `popstate` handler exists but browser back/forward won't step through tabs today. Switch to `pushState` if that behavior is wanted.
 
-### AI layer ([src/lib/groq.ts](src/lib/groq.ts), [src/lib/buildContext.ts](src/lib/buildContext.ts), [src/features/ai/](src/features/ai/))
-- `askLLM()` calls Groq's OpenAI-compatible chat endpoint (model `llama-3.3-70b-versatile`, temp 0.3) directly from the browser. Errors surface as `LLMError`.
-- The model only ever sees the curated dataset: `buildProjectContext()` (whole dataset, for `ChatPanel`) / `buildSingleProjectContext(id)` (one project + its people, for `ProjectAnalysis`) serialize projects+entities into the prompt. The chat context is built **once** at module load (data is static).
+### AI layer ([api/analyze.ts](api/analyze.ts), [src/lib/ai.ts](src/lib/ai.ts), [src/lib/buildContext.ts](src/lib/buildContext.ts), [src/features/ai/](src/features/ai/))
+- The serverless function calls Groq's OpenAI-compatible chat endpoint (model `llama-3.3-70b-versatile`, temp 0.3). The browser only calls `/api/analyze` via `askAnalysis()` / `askChat()` in `src/lib/ai.ts`; errors surface as `LLMError` carrying visitor-safe wording. (`src/lib/groq.ts` is gone — it was the browser-side caller that required the exposed key.)
+- The model only ever sees the curated dataset: `buildProjectContext()` (whole dataset, for chat) / `buildSingleProjectContext(id)` (one project + its people, for analysis) serialize projects+entities into the prompt. **Both are now called on the server**, so the prompt cannot be tampered with from the client.
+- Both AI components render nothing until `useAiEnabled()` confirms the server has a key, so a deployment without one shows no AI affordances at all rather than a broken or "not configured" control.
 - `CHAT_SYSTEM_PROMPT` / `ANALYSIS_SYSTEM_PROMPT` carry hard guardrails: never say "guilty," frame accountability statuses as official records not verdicts (allegations stay allegations), no legal/financial advice, answer only from provided data. `languageDirective(lang)` is appended for the auto/EN/Filipino-Taglish reply toggle.
 
 ## Conventions

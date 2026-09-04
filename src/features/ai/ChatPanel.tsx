@@ -1,16 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, AlertCircle, Sparkles } from "lucide-react";
-import {
-  askLLM,
-  isKeyConfigured,
-  type ChatMessage as LLMMessage,
-} from "../../lib/groq";
-import {
-  buildProjectContext,
-  CHAT_SYSTEM_PROMPT,
-  languageDirective,
-  type ReplyLang,
-} from "../../lib/buildContext";
+import { askChat, type ChatMessage as LLMMessage } from "../../lib/ai";
+import { useAiEnabled } from "../../lib/useAiEnabled";
+import type { ReplyLang } from "../../lib/buildContext";
 
 interface Message {
   role: "user" | "model";
@@ -24,9 +16,6 @@ const SUGGESTIONS = [
   "What are the most flagged projects?",
 ];
 
-// Build context once (doesn't change at runtime).
-const systemPrompt = CHAT_SYSTEM_PROMPT(buildProjectContext());
-
 export function ChatPanel() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,7 +26,7 @@ export function ChatPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const configured = isKeyConfigured();
+  const aiEnabled = useAiEnabled();
 
   useEffect(() => {
     if (open) {
@@ -56,15 +45,13 @@ export function ChatPanel() {
     setLoading(true);
 
     try {
-      const history: LLMMessage[] = next.slice(0, -1).map((m) => ({
+      // The whole turn goes to the server, which owns the system prompt and
+      // reads the last message as the question.
+      const history: LLMMessage[] = next.map((m) => ({
         role: m.role,
         text: m.text,
       }));
-      const reply = await askLLM(
-        systemPrompt + languageDirective(lang),
-        history,
-        userMsg.text,
-      );
+      const reply = await askChat(history, lang);
       setMessages([...next, { role: "model", text: reply }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -73,6 +60,12 @@ export function ChatPanel() {
       setLoading(false);
     }
   }
+
+  // No key on the server: no chat button, no panel. Offering the chat and then
+  // explaining inside it that AI is not enabled is worse than not offering it —
+  // the visitor cannot do anything about a missing key. (Early return sits
+  // below every hook so the hook order stays constant.)
+  if (!aiEnabled) return null;
 
   return (
     <>
@@ -132,15 +125,7 @@ export function ChatPanel() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 max-h-80">
-            {!configured && (
-              <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Add <code className="font-mono">VITE_GROQ_API_KEY</code> to your{" "}
-                <code className="font-mono">.env</code> file and restart the dev
-                server to enable AI.
-              </div>
-            )}
-
-            {messages.length === 0 && configured && (
+            {messages.length === 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-slate-400">Try asking:</p>
                 {SUGGESTIONS.map((s) => (
@@ -207,16 +192,14 @@ export function ChatPanel() {
                     send(input);
                   }
                 }}
-                placeholder={
-                  configured ? "Ask about the budget…" : "API key required"
-                }
-                disabled={!configured || loading}
+                placeholder="Ask about the budget…"
+                disabled={loading}
                 className="flex-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={() => send(input)}
-                disabled={!configured || loading || !input.trim()}
+                disabled={loading || !input.trim()}
                 aria-label="Send"
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               >

@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Sparkles, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { askLLM, isKeyConfigured, type ChatMessage as LLMMessage } from "../../lib/groq";
-import {
-  buildSingleProjectContext,
-  ANALYSIS_SYSTEM_PROMPT,
-} from "../../lib/buildContext";
+import { askAnalysis } from "../../lib/ai";
+import { useAiEnabled } from "../../lib/useAiEnabled";
 
 interface Props {
   projectId: string;
@@ -17,27 +14,13 @@ export function ProjectAnalysis({ projectId }: Props) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(true);
-
-  if (!isKeyConfigured()) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-400">
-        <Sparkles size={14} className="shrink-0" />
-        AI analysis · add <code className="mx-0.5 font-mono text-xs">VITE_GROQ_API_KEY</code> to .env to enable
-      </div>
-    );
-  }
+  const aiEnabled = useAiEnabled();
 
   async function analyze() {
     setState("loading");
     setError("");
     try {
-      const context = buildSingleProjectContext(projectId);
-      const prompt = `${ANALYSIS_SYSTEM_PROMPT}\n\n${context}`;
-      const text = await askLLM(
-        prompt,
-        [] as LLMMessage[],
-        "Analyze this project. Cover: timeline issues, budget utilization, red flags, and people involved with their accountability status. End with a one-sentence civic takeaway.",
-      );
+      const text = await askAnalysis(projectId);
       setResult(text);
       setState("done");
     } catch (e) {
@@ -45,6 +28,12 @@ export function ProjectAnalysis({ projectId }: Props) {
       setState("error");
     }
   }
+
+  // Render nothing unless the server confirms AI is configured. This used to
+  // show an "add VITE_GROQ_API_KEY to .env to enable" placeholder — a note to
+  // the developer that, on the deployed site, only told visitors about a
+  // feature they could not use and named an internal env var doing it.
+  if (!aiEnabled) return null;
 
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50">
