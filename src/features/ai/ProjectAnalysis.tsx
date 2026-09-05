@@ -29,10 +29,6 @@ export function ProjectAnalysis({ projectId }: Props) {
     }
   }
 
-  // Render nothing unless the server confirms AI is configured. This used to
-  // show an "add VITE_GROQ_API_KEY to .env to enable" placeholder — a note to
-  // the developer that, on the deployed site, only told visitors about a
-  // feature they could not use and named an internal env var doing it.
   if (!aiEnabled) return null;
 
   return (

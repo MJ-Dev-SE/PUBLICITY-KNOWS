@@ -170,7 +170,7 @@ function ProjectDetail({
 
       {project.bidding && <BiddingPanel bidding={project.bidding} />}
 
-      <ProjectAnalysis projectId={project.id} />
+      <ProjectAnalysis key={project.id} projectId={project.id} />
 
       <section>
         <h4 className="mb-2 text-sm font-medium text-slate-900">

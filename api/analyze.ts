@@ -1,21 +1,3 @@
-/**
- * Server-side Groq proxy.
- *
- * WHY THIS EXISTS: the browser used to call api.groq.com directly with
- * `import.meta.env.VITE_GROQ_API_KEY`. Vite inlines every `VITE_*` variable
- * into the client bundle at build time, so that key would have shipped in
- * plain text to every visitor — readable in the JS bundle and in the Network
- * tab. The key now lives only here, as `GROQ_API_KEY` (no VITE_ prefix, so it
- * is never exposed to the client), and the browser talks to this endpoint.
- *
- *   GET  /api/analyze  -> { enabled }  is AI configured? (no secrets leak)
- *   POST /api/analyze  -> { text }     run an analysis or a chat turn
- *
- * The server also OWNS THE SYSTEM PROMPT. The client sends only a mode, a
- * project id and the conversation — never a prompt. If callers could supply
- * their own system prompt, this endpoint would be a free general-purpose LLM
- * running on someone else's quota.
- */
 import {
   buildProjectContext,
   buildSingleProjectContext,
@@ -25,19 +7,12 @@ import {
   type ReplyLang,
 } from "../src/lib/buildContext";
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-// Request caps. These bound both cost and abuse: a caller cannot send a huge
-// history to run up tokens, or a novel-length question.
 const MAX_HISTORY = 12;
 const MAX_TEXT_LEN = 2000;
 
-// Best-effort rate limit. NOTE: this Map lives in one warm serverless
-// instance, so it is not a hard global guarantee — Vercel may run several
-// instances, and a cold start resets the counter. It stops casual hammering,
-// which is what it is for. If this ever gets real traffic, move the counter to
-// a shared store (Vercel KV / Upstash) so the limit holds across instances.
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 12;
 const hits = new Map<string, number[]>();
@@ -48,7 +23,6 @@ function rateLimited(ip: string): boolean {
   recent.push(now);
   hits.set(ip, recent);
 
-  // Keep the map from growing without bound across a long-lived instance.
   if (hits.size > 500) {
     for (const [key, times] of hits) {
       if (times.every((t) => now - t >= WINDOW_MS)) hits.delete(key);
@@ -78,7 +52,6 @@ type Body = {
   lang?: unknown;
 };
 
-/** Validates and narrows the request body; returns an error string instead of throwing. */
 function readBody(body: Body) {
   const mode = body.mode;
   if (mode !== "analysis" && mode !== "chat") {
@@ -122,8 +95,6 @@ function readBody(body: Body) {
   } as const;
 }
 
-// Minimal structural types for the Vercel Node signature, so the project does
-// not need to take on @vercel/node as a dependency just for two annotations.
 type ApiRequest = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -137,11 +108,8 @@ type ApiResponse = {
 };
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  // Never let a proxy or browser cache an answer keyed only by URL.
   res.setHeader("Cache-Control", "no-store");
 
-  // The client uses this to decide whether to render the AI UI at all. It
-  // reports only whether a key exists, never any part of the key itself.
   if (req.method === "GET") {
     res.status(200).json({ enabled: isKeyConfigured() });
     return;
@@ -170,8 +138,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return;
   }
 
-  // Prompts are built here, from the same seed data the app renders, so a
-  // caller cannot substitute their own instructions.
   let systemPrompt: string;
   let userMessage: string;
   let history: Turn[] = [];
@@ -184,7 +150,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     systemPrompt = `${ANALYSIS_SYSTEM_PROMPT}\n\n${context}`;
     userMessage =
-      "Analyze this project. Cover: timeline issues, budget utilization, red flags, and people involved with their accountability status. End with a one-sentence civic takeaway.";
+      "Analyze this project. Cover: timeline issues, budget utilization, red flags, and people involved with their accountability status. End with a one-sentence civic takeaway. Write everything in plain text - no markdown, no tables, no bullet points, no special characters like em-dashes or bold markers.";
   } else {
     systemPrompt =
       CHAT_SYSTEM_PROMPT(buildProjectContext()) + languageDirective(parsed.lang);
@@ -217,8 +183,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     });
 
     if (!upstream.ok) {
-      // Upstream errors can name the model, quota or key — log them for the
-      // operator, but send the visitor something plain.
       const detail = await upstream.text().catch(() => "");
       console.error("Groq error", upstream.status, detail.slice(0, 500));
       res.status(502).json({ error: "AI analysis is unavailable right now." });

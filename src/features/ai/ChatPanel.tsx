@@ -45,8 +45,6 @@ export function ChatPanel() {
     setLoading(true);
 
     try {
-      // The whole turn goes to the server, which owns the system prompt and
-      // reads the last message as the question.
       const history: LLMMessage[] = next.map((m) => ({
         role: m.role,
         text: m.text,
@@ -61,10 +59,6 @@ export function ChatPanel() {
     }
   }
 
-  // No key on the server: no chat button, no panel. Offering the chat and then
-  // explaining inside it that AI is not enabled is worse than not offering it —
-  // the visitor cannot do anything about a missing key. (Early return sits
-  // below every hook so the hook order stays constant.)
   if (!aiEnabled) return null;
 
   return (
