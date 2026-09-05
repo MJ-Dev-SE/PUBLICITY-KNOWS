@@ -17,8 +17,8 @@ export { entities } from "./entities";
 // "Data as of" stamp shown in the UI (see §7.6). The date the dataset was last
 // reviewed against published reporting. Bump it whenever the seed files change;
 // the AI system prompt reads this constant, so it only needs changing here.
-// Latest source article in the dataset: 2026-08-10.
-export const DATA_AS_OF = "2026-08-11";
+// Latest source article in the dataset: 2026-09-04.
+export const DATA_AS_OF = "2026-09-05";
 
 const projectsById = new Map<string, Project>(projects.map((p) => [p.id, p]));
 const entitiesById = new Map<string, Entity>(entities.map((e) => [e.id, e]));
