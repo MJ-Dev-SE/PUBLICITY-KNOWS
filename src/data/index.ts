@@ -1,18 +1,18 @@
 // Data-layer entry point. Components should import from here, not from the raw
 // seed files, so a real API/DB can replace the source later without touching UI.
 
-import type { Entity, Project } from "./types";
-import { projects } from "./projects";
-import { entities } from "./entities";
+import type { Entity, Project } from "./types.js";
+import { projects } from "./projects.js";
+import { entities } from "./entities.js";
 
-export type { Project, Entity, Source } from "./types";
+export type { Project, Entity, Source } from "./types.js";
 export type {
   ProjectStatus,
   EntityKind,
   AccountabilityStatus,
-} from "./types";
-export { projects } from "./projects";
-export { entities } from "./entities";
+} from "./types.js";
+export { projects } from "./projects.js";
+export { entities } from "./entities.js";
 
 // "Data as of" stamp shown in the UI (see §7.6). The date the dataset was last
 // reviewed against published reporting. Bump it whenever the seed files change;

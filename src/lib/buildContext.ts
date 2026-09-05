@@ -1,6 +1,6 @@
-import { projects, entities, DATA_AS_OF } from "../data";
-import { formatDate } from "./format";
-import { statusOf } from "./status";
+import { projects, entities, DATA_AS_OF } from "../data/index.js";
+import { formatDate } from "./format.js";
+import { statusOf } from "./status.js";
 
 export function buildProjectContext(): string {
   const projectLines = projects

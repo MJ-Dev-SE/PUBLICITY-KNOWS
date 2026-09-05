@@ -1,4 +1,4 @@
-import type { Project } from "./types";
+import type { Project } from "./types.js";
 
 // Projects (see CLAUDE.md §9 seed). Figures and dates are sourced from public
 // reporting on the 2026 GAA (RA 12314) and the 2025–2026 DPWH flood control

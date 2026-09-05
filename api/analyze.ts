@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import {
   buildProjectContext,
   buildSingleProjectContext,
@@ -5,7 +6,7 @@ import {
   ANALYSIS_SYSTEM_PROMPT,
   languageDirective,
   type ReplyLang,
-} from "../src/lib/buildContext";
+} from "../src/lib/buildContext.js";
 
 const MODEL = "openai/gpt-oss-120b";
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
@@ -108,6 +109,15 @@ type ApiResponse = {
 };
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  try {
+    return await _handler(req, res);
+  } catch (error) {
+    console.error("Unhandled error in /api/analyze", error);
+    res.status(500).json({ error: "Internal server error." });
+  }
+}
+
+async function _handler(req: ApiRequest, res: ApiResponse) {
   res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "GET") {

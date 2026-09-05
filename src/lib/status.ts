@@ -1,4 +1,4 @@
-import type { Project, ProjectStatus } from "../data/types";
+import type { Project, ProjectStatus } from "../data/types.js";
 
 // "Today" for status calculations.
 // Uses the live system clock (per project decision). Kept as a single function

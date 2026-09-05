@@ -1,4 +1,4 @@
-import type { Entity } from "./types";
+import type { Entity } from "./types.js";
 
 // Accountability entities (see CLAUDE.md §9 seed + §7 responsible framing).
 //
