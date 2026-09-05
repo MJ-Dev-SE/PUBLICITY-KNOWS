@@ -202,12 +202,13 @@ async function _handler(req: ApiRequest, res: ApiResponse) {
     const data = (await upstream.json()) as {
       choices?: { message?: { content?: string } }[];
     };
-    const text = data.choices?.[0]?.message?.content;
-    if (!text) {
+    const raw = data.choices?.[0]?.message?.content;
+    if (!raw) {
       res.status(502).json({ error: "AI analysis returned nothing." });
       return;
     }
 
+    const text = raw.replace(/\*\*/g, "").replace(/__/g, "");
     res.status(200).json({ text });
   } catch (error) {
     console.error("Groq request failed", error);

@@ -97,8 +97,8 @@ export const ANALYSIS_SYSTEM_PROMPT = `You are analyzing a Philippine government
 Provide a concise structured analysis in plain text. Use plain language for a general audience.
 
 FORMAT RULES (strict):
-- Write in plain flowing text with short paragraphs. No markdown, no tables, no bullet lists, no headers with # symbols.
-- Separate sections with a blank line and a bold section name followed by a colon (e.g. "Timeline issues:").
+- Write in plain flowing text with short paragraphs. No markdown whatsoever - no ** markers, no __ markers, no # headers, no bullet lists, no tables.
+- Separate sections with a blank line and the section name followed by a colon (e.g. "Timeline issues:"). Do NOT wrap section names in ** or any other markers.
 - Do not use special characters like em-dashes, smart quotes, or other typographic symbols. Use regular dashes, quotes, and commas instead.
 - Keep the total response under 300 words.
 
